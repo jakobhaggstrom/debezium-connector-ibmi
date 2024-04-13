@@ -85,6 +85,8 @@ public class As400ConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public static final Field TO_CCSID = Field.create("to.ccsid", "to ccsid", "when the table indicates the from_ccsid translate to this to_ccsid setting", -1);
 
+    public static final Field JOURNAL_NAME_CCSID = Field.create("journal.name.ccsid", "journal name ccsid", "To specify ccsid when decoding journals.", -1);
+
     public static final Field DIAGNOSTICS_FOLDER = Field.create("diagnostics.folder",
             "folder to dump failed decodings to", "used when there is a decoding failure to aid diagnostics");
 
@@ -186,6 +188,10 @@ public class As400ConnectorConfig extends RelationalDatabaseConnectorConfig {
         return config.getInteger(TO_CCSID);
     }
 
+    public Integer getJournalNameCCSID() {
+        return config.getInteger(JOURNAL_NAME_CCSID);
+    }
+
     public boolean isSecure() {
         return config.getBoolean(SECURE);
     }
@@ -229,7 +235,7 @@ public class As400ConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public static Field.Set ALL_FIELDS = Field.setOf(JdbcConfiguration.HOSTNAME, USER, PASSWORD, SCHEMA, BUFFER_SIZE,
             RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, KEEP_ALIVE, THREAD_USED, SOCKET_TIMEOUT,
-            MAX_SERVER_SIDE_ENTRIES, TOPIC_NAMING_STRATEGY, FROM_CCSID, TO_CCSID, DB_ERRORS, DATE_FORMAT, SECURE,
+            MAX_SERVER_SIDE_ENTRIES, TOPIC_NAMING_STRATEGY, FROM_CCSID, TO_CCSID, JOURNAL_NAME_CCSID, DB_ERRORS, DATE_FORMAT, SECURE,
             DIAGNOSTICS_FOLDER);
 
     public static ConfigDef configDef() {
@@ -237,7 +243,7 @@ public class As400ConnectorConfig extends RelationalDatabaseConnectorConfig {
                 .name("ibmi")
                 .type(
                         HOSTNAME, USER, PASSWORD, SCHEMA, BUFFER_SIZE,
-                        KEEP_ALIVE, THREAD_USED, SOCKET_TIMEOUT, FROM_CCSID, TO_CCSID, DB_ERRORS, DATE_FORMAT, SECURE,
+                        KEEP_ALIVE, THREAD_USED, SOCKET_TIMEOUT, FROM_CCSID, TO_CCSID, JOURNAL_NAME_CCSID, DB_ERRORS, DATE_FORMAT, SECURE,
                         DIAGNOSTICS_FOLDER)
                 .connector()
                 .events(

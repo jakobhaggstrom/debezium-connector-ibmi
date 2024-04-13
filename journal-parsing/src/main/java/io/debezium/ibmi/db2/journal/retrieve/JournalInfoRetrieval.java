@@ -49,18 +49,41 @@ public class JournalInfoRetrieval {
 
     public static final String JOURNAL_SERVICE_LIB = "/QSYS.LIB/QJOURNAL.SRVPGM";
 
-    private static final byte[] EMPTY_AS400_TEXT = new AS400Text(0).toBytes("");
-    private static final AS400Text AS400_TEXT_8 = new AS400Text(8);
-    private static final AS400Text AS400_TEXT_20 = new AS400Text(20);
-    private static final AS400Text AS400_TEXT_1 = new AS400Text(1);
-    private static final AS400Text AS400_TEXT_10 = new AS400Text(10);
-    private static final AS400Bin8 AS400_BIN8 = new AS400Bin8();
-    private static final AS400Bin4 AS400_BIN4 = new AS400Bin4();
+    private final byte[] EMPTY_AS400_TEXT;
+    private final AS400Text AS400_TEXT_8;
+    private final AS400Text AS400_TEXT_20;
+    private final AS400Text AS400_TEXT_1;
+    private final AS400Text AS400_TEXT_10;
+    private final AS400Bin8 AS400_BIN8;
+    private final AS400Bin4 AS400_BIN4;
     private static final int KEY_HEADER_LENGTH = 20;
     private final DetailedJournalReceiverCache cache = new DetailedJournalReceiverCache();
 
+
     public JournalInfoRetrieval() {
         super();
+        this.EMPTY_AS400_TEXT = new AS400Text(0).toBytes("");
+        this.AS400_TEXT_8 = new AS400Text(8);
+        this.AS400_TEXT_20 = new AS400Text(20);
+        this.AS400_TEXT_1 = new AS400Text(1);
+        this.AS400_TEXT_10 = new AS400Text(10);
+        }
+
+    public JournalInfoRetrieval(int ccsid) {
+        super();
+        if (ccsid > -1) {
+            this.EMPTY_AS400_TEXT = new AS400Text(0, ccsid).toBytes("");
+            this.AS400_TEXT_8 = new AS400Text(8, ccsid);
+            this.AS400_TEXT_20 = new AS400Text(20, ccsid);
+            this.AS400_TEXT_1 = new AS400Text(1, ccsid);
+            this.AS400_TEXT_10 = new AS400Text(10, ccsid);
+        } else {
+            this.EMPTY_AS400_TEXT = new AS400Text(0).toBytes("");
+            this.AS400_TEXT_8 = new AS400Text(8);
+            this.AS400_TEXT_20 = new AS400Text(20);
+            this.AS400_TEXT_1 = new AS400Text(1);
+            this.AS400_TEXT_10 = new AS400Text(10);
+        }
     }
 
     public JournalPosition getCurrentPosition(AS400 as400, JournalInfo journalLib) throws Exception {

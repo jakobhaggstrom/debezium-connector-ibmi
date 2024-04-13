@@ -43,7 +43,7 @@ public class As400RpcConnection implements AutoCloseable, Connect<AS400, IOExcep
     private AS400 as400;
     private static SocketProperties socketProperties = new SocketProperties();
     private final LogLimmiting periodic = new LogLimmiting(5 * 60 * 1000l);
-    private final JournalInfoRetrieval journalInfoRetrieval = new JournalInfoRetrieval();
+    private final JournalInfoRetrieval journalInfoRetrieval;
 
     private final boolean isSecure;
 
@@ -52,6 +52,7 @@ public class As400RpcConnection implements AutoCloseable, Connect<AS400, IOExcep
         this.config = config;
         this.isSecure = config.isSecure();
         this.streamingMetrics = streamingMetrics;
+        this.journalInfoRetrieval = JournalInfoRetrieval(config.getJournalNameCCSID())
         try {
             System.setProperty("com.ibm.as400.access.AS400.guiAvailable", "False");
             if (includes.isEmpty()) {
