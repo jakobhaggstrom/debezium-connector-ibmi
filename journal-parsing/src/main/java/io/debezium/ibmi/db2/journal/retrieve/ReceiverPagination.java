@@ -31,11 +31,11 @@ public class ReceiverPagination {
         this.journalInfo = journalInfo;
     }
 
-    PositionRange findRange(AS400 as400, JournalProcessedPosition startPosition) throws Exception {
+    PositionRange findRange(AS400 as400, JournalProcessedPosition startPosition, Integer ccsid) throws Exception {
         final BigInteger start = startPosition.getOffset();
         final boolean fromBeginning = !startPosition.isOffsetSet() || start.equals(BigInteger.ZERO);
 
-        final DetailedJournalReceiver endPosition = journalInfoRetrieval.getCurrentDetailedJournalReceiver(as400, journalInfo);
+        final DetailedJournalReceiver endPosition = journalInfoRetrieval.getCurrentDetailedJournalReceiver(as400, journalInfo, ccsid);
 
         if (fromBeginning) {
             return new PositionRange(fromBeginning, startPosition,
@@ -47,7 +47,7 @@ public class ReceiverPagination {
         }
 
         if (cachedReceivers == null) {
-            cachedReceivers = journalInfoRetrieval.getReceivers(as400, journalInfo);
+            cachedReceivers = journalInfoRetrieval.getReceivers(as400, journalInfo, ccsid);
         }
         if (cachedEndPosition.isSameReceiver(endPosition)) {
             // refresh end position in cached list
@@ -60,7 +60,7 @@ public class ReceiverPagination {
         }
         else {
             // last call to current position won't include the correct end offset so we need to refresh the list
-            cachedReceivers = journalInfoRetrieval.getReceivers(as400, journalInfo);
+            cachedReceivers = journalInfoRetrieval.getReceivers(as400, journalInfo, ccsid);
             cachedEndPosition = endPosition;
         }
 
@@ -68,7 +68,7 @@ public class ReceiverPagination {
                 cachedEndPosition);
         if (endOpt.isEmpty()) {
             log.warn("retrying to find end offset");
-            cachedReceivers = journalInfoRetrieval.getReceivers(as400, journalInfo);
+            cachedReceivers = journalInfoRetrieval.getReceivers(as400, journalInfo, ccsid);
             endOpt = findPosition(startPosition, maxServerSideEntriesBI, cachedReceivers, endPosition);
         }
 

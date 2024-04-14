@@ -43,7 +43,7 @@ public class As400RpcConnection implements AutoCloseable, Connect<AS400, IOExcep
     private AS400 as400;
     private static SocketProperties socketProperties = new SocketProperties();
     private final LogLimmiting periodic = new LogLimmiting(5 * 60 * 1000l);
-    private final JournalInfoRetrieval journalInfoRetrieval;
+    private final JournalInfoRetrieval journalInfoRetrieval = new JournalInfoRetrieval();
 
     private final boolean isSecure;
 
@@ -52,7 +52,6 @@ public class As400RpcConnection implements AutoCloseable, Connect<AS400, IOExcep
         this.config = config;
         this.isSecure = config.isSecure();
         this.streamingMetrics = streamingMetrics;
-        this.journalInfoRetrieval = JournalInfoRetrieval(config.getJournalNameCCSID())
         try {
             System.setProperty("com.ibm.as400.access.AS400.guiAvailable", "False");
             if (includes.isEmpty()) {
@@ -60,14 +59,17 @@ public class As400RpcConnection implements AutoCloseable, Connect<AS400, IOExcep
                 journalInfo = JournalInfoRetrieval.getJournal(connection(), config.getSchema());
             }
             else {
-                journalInfo = JournalInfoRetrieval.getJournal(connection(), config.getSchema(), includes);
+                journalInfo = JournalInfoRetrieval.getJournal(connection(), config.getSchema(), includes, config.getJournalNameCCSID());
             }
             final RetrieveConfig rconfig = new RetrieveConfigBuilder().withAs400(this)
                     .withJournalBufferSize(config.getJournalBufferSize())
                     .withJournalInfo(journalInfo)
                     .withMaxServerSideEntries(config.getMaxServerSideEntries())
                     .withServerFiltering(true)
-                    .withIncludeFiles(includes).withDumpFolder(config.diagnosticsFolder()).build();
+                    .withIncludeFiles(includes)
+                    .withDumpFolder(config.diagnosticsFolder())
+                    .withJournalCCSID(config.getJournalNameCCSID())
+                    .build();
             retrieveJournal = new RetrieveJournal(rconfig, journalInfoRetrieval);
         }
         catch (final IOException e) {
@@ -123,7 +125,7 @@ public class As400RpcConnection implements AutoCloseable, Connect<AS400, IOExcep
 
     public JournalPosition getCurrentPosition() throws RpcException {
         try {
-            final JournalPosition position = journalInfoRetrieval.getCurrentPosition(connection(), journalInfo);
+            final JournalPosition position = journalInfoRetrieval.getCurrentPosition(connection(), journalInfo, this.config.getJournalNameCCSID());
 
             return new JournalPosition(position);
         }
@@ -159,7 +161,7 @@ public class As400RpcConnection implements AutoCloseable, Connect<AS400, IOExcep
         }
         else {
             // this is bad, we've probably lost data
-            final List<DetailedJournalReceiver> receivers = journalInfoRetrieval.getReceivers(connection(), journalInfo);
+            final List<DetailedJournalReceiver> receivers = journalInfoRetrieval.getReceivers(connection(), journalInfo, this.config.getJournalNameCCSID());
             log.error("Failed to fetch journal entries '{}', resetting journal to blank",
                     Map.of("position", position,
                             "receivers", receivers));

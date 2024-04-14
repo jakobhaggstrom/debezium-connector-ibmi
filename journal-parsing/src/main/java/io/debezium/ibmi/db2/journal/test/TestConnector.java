@@ -39,12 +39,13 @@ public class TestConnector {
         final String host = System.getenv("ISERIES_HOST");
         final String fromCcsid = System.getenv("FROM_CCSID");
         final String toCcsid = System.getenv("TO_CCSID");
-
+        final String JournalNameccsid = System.getenv("JOURNAL_NAME_CCSID");
         url = String.format("jdbc:as400:%s", host);
 
         props = new Properties();
         props.setProperty("user", user);
         props.setProperty("password", password);
+        props.setProperty("journal.name.ccsid", JournalNameccsid);
         if (fromCcsid != null && toCcsid != null) {
             AS400JDBCDriverRegistration.registerCcsidDriver();
             props.setProperty(AS400JDBCConnectionForcedCcsid.FROM_CCSID, fromCcsid);

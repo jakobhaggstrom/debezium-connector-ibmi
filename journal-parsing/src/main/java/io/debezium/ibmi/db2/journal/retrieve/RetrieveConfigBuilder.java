@@ -29,6 +29,7 @@ public class RetrieveConfigBuilder {
     private List<FileFilter> includeFiles = Collections.<FileFilter> emptyList();
     private int maxServerSideEntries = RetrieveConfig.DEFAULT_MAX_SERVER_SIDE_ENTRIES;
     private boolean filtering;
+    private Integer ccsid;
 
     public RetrieveConfigBuilder() {
     }
@@ -99,7 +100,12 @@ public class RetrieveConfigBuilder {
         return this;
     }
 
+    public RetrieveConfigBuilder withJournalCCSID(Integer ccsid) {
+        this.ccsid = ccsid;
+        return this;
+    }
+
     public RetrieveConfig build() {
-        return new RetrieveConfig(as400, journalInfo, journalBufferSize, filtering, filterCodes, includeFiles, maxServerSideEntries, dumpFolder);
+        return new RetrieveConfig(as400, journalInfo, journalBufferSize, filtering, filterCodes, includeFiles, maxServerSideEntries, dumpFolder, ccsid);
     }
 }

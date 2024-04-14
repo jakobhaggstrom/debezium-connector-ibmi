@@ -48,54 +48,26 @@ public class JournalInfoRetrieval {
     private static final Logger log = LoggerFactory.getLogger(JournalInfoRetrieval.class);
 
     public static final String JOURNAL_SERVICE_LIB = "/QSYS.LIB/QJOURNAL.SRVPGM";
-
-    private final byte[] EMPTY_AS400_TEXT;
-    private final AS400Text AS400_TEXT_8;
-    private final AS400Text AS400_TEXT_20;
-    private final AS400Text AS400_TEXT_1;
-    private final AS400Text AS400_TEXT_10;
-    private final AS400Bin8 AS400_BIN8;
-    private final AS400Bin4 AS400_BIN4;
+    private static final byte[] EMPTY_AS400_TEXT = new AS400Text(0).toBytes("");
+    private static final AS400Bin8 AS400_BIN8 = new AS400Bin8();
+    private static final AS400Bin4 AS400_BIN4 = new AS400Bin4();
     private static final int KEY_HEADER_LENGTH = 20;
     private final DetailedJournalReceiverCache cache = new DetailedJournalReceiverCache();
 
-
     public JournalInfoRetrieval() {
         super();
-        this.EMPTY_AS400_TEXT = new AS400Text(0).toBytes("");
-        this.AS400_TEXT_8 = new AS400Text(8);
-        this.AS400_TEXT_20 = new AS400Text(20);
-        this.AS400_TEXT_1 = new AS400Text(1);
-        this.AS400_TEXT_10 = new AS400Text(10);
-        }
-
-    public JournalInfoRetrieval(int ccsid) {
-        super();
-        if (ccsid > -1) {
-            this.EMPTY_AS400_TEXT = new AS400Text(0, ccsid).toBytes("");
-            this.AS400_TEXT_8 = new AS400Text(8, ccsid);
-            this.AS400_TEXT_20 = new AS400Text(20, ccsid);
-            this.AS400_TEXT_1 = new AS400Text(1, ccsid);
-            this.AS400_TEXT_10 = new AS400Text(10, ccsid);
-        } else {
-            this.EMPTY_AS400_TEXT = new AS400Text(0).toBytes("");
-            this.AS400_TEXT_8 = new AS400Text(8);
-            this.AS400_TEXT_20 = new AS400Text(20);
-            this.AS400_TEXT_1 = new AS400Text(1);
-            this.AS400_TEXT_10 = new AS400Text(10);
-        }
     }
 
-    public JournalPosition getCurrentPosition(AS400 as400, JournalInfo journalLib) throws Exception {
-        final JournalReceiver ji = JournalInfoRetrieval.getReceiver(as400, journalLib);
-        final BigInteger offset = getOffset(as400, ji).end();
+    public JournalPosition getCurrentPosition(AS400 as400, JournalInfo journalLib, Integer ccsid) throws Exception {
+        final JournalReceiver ji = JournalInfoRetrieval.getReceiver(as400, journalLib, ccsid);
+        final BigInteger offset = getOffset(as400, ji, ccsid).end();
         return new JournalPosition(offset, ji);
     }
 
-    public DetailedJournalReceiver getCurrentDetailedJournalReceiver(AS400 as400, JournalInfo journalLib)
+    public DetailedJournalReceiver getCurrentDetailedJournalReceiver(AS400 as400, JournalInfo journalLib, Integer ccsid)
             throws Exception {
-        final JournalReceiver ji = JournalInfoRetrieval.getReceiver(as400, journalLib);
-        return getOffset(as400, ji);
+        final JournalReceiver ji = JournalInfoRetrieval.getReceiver(as400, journalLib, ccsid);
+        return getOffset(as400, ji, ccsid);
     }
 
     static final Pattern JOURNAL_REGEX = Pattern.compile("\\/[^/]*\\/([^.]*).LIB\\/(.*).JRN");
@@ -120,7 +92,7 @@ public class JournalInfoRetrieval {
         throw new IllegalStateException("Journal not found");
     }
 
-    public static JournalInfo getJournal(AS400 as400, String schema, List<FileFilter> includes)
+    public static JournalInfo getJournal(AS400 as400, String schema, List<FileFilter> includes, Integer ccsid)
             throws IllegalStateException {
         if (includes.isEmpty()) {
             return getJournal(as400, schema);
@@ -132,7 +104,7 @@ public class JournalInfoRetrieval {
                     throw new IllegalArgumentException(
                             String.format("schema %s does not match for filter: %s", schema, f));
                 }
-                final JournalInfo ji = getJournal(as400, f.schema(), f.table());
+                final JournalInfo ji = getJournal(as400, f.schema(), f.table(), ccsid);
                 jis.add(ji);
             }
             if (jis.size() > 1) {
@@ -146,9 +118,27 @@ public class JournalInfoRetrieval {
         }
     }
 
-    public static JournalInfo getJournal(AS400 as400, String schema, String table) throws Exception {
+    public static JournalInfo getJournal(AS400 as400, String schema, String table, Integer ccsid) throws Exception {
         final int rcvLen = 32768;
         final String filename = padRight(table.toUpperCase(), 10) + padRight(schema.toUpperCase(), 10);
+
+        final AS400Text AS400_TEXT_8;
+        final AS400Text AS400_TEXT_20;
+        final AS400Text AS400_TEXT_1;
+        final AS400Text AS400_TEXT_10;
+
+        if (ccsid > -1) {
+            AS400_TEXT_8 = new AS400Text(8, ccsid.intValue(), as400);
+            AS400_TEXT_20 = new AS400Text(20, ccsid.intValue(), as400);
+            AS400_TEXT_1 = new AS400Text(1, ccsid.intValue(), as400);
+            AS400_TEXT_10 = new AS400Text(10, ccsid.intValue(), as400);
+        }
+        else {
+            AS400_TEXT_8 = new AS400Text(8, as400);
+            AS400_TEXT_20 = new AS400Text(20, as400);
+            AS400_TEXT_1 = new AS400Text(1, as400);
+            AS400_TEXT_10 = new AS400Text(10, as400);
+        }
 
         final ProgramParameter[] parameters = new ProgramParameter[]{
                 new ProgramParameter(ProgramParameter.PASS_BY_REFERENCE, rcvLen), // 1
@@ -253,10 +243,23 @@ public class JournalInfoRetrieval {
      * @return
      * @throws Exception
      */
-    public static JournalReceiver getReceiver(AS400 as400, JournalInfo journalLib) throws Exception {
+    public static JournalReceiver getReceiver(AS400 as400, JournalInfo journalLib, Integer ccsid) throws Exception {
         final int rcvLen = 4096;
         final String jrnLib = padRight(journalLib.journalName(), 10) + padRight(journalLib.journalLibrary(), 10);
         final String format = "RJRN0200";
+
+        final AS400Text AS400_TEXT_8;
+        final AS400Text AS400_TEXT_20;
+
+        if (ccsid > -1) {
+            AS400_TEXT_8 = new AS400Text(8, ccsid.intValue(), as400);
+            AS400_TEXT_20 = new AS400Text(20, ccsid.intValue(), as400);
+        }
+        else {
+            AS400_TEXT_8 = new AS400Text(8, as400);
+            AS400_TEXT_20 = new AS400Text(20, as400);
+        }
+
         final ProgramParameter[] parameters = new ProgramParameter[]{
                 new ProgramParameter(ProgramParameter.PASS_BY_REFERENCE, rcvLen),
                 new ProgramParameter(ProgramParameter.PASS_BY_REFERENCE, AS400_BIN4.toBytes(rcvLen / 4096)),
@@ -278,9 +281,19 @@ public class JournalInfoRetrieval {
                 });
     }
 
-    private byte[] getReceiversForJournal(AS400 as400, JournalInfo journalLib, int bufSize) throws Exception {
+    private byte[] getReceiversForJournal(AS400 as400, JournalInfo journalLib, int bufSize, Integer ccsid) throws Exception {
         final String jrnLib = padRight(journalLib.journalName(), 10) + padRight(journalLib.journalLibrary(), 10);
         final String format = "RJRN0200";
+        final AS400Text AS400_TEXT_8;
+        final AS400Text AS400_TEXT_20;
+        if (ccsid > -1) {
+            AS400_TEXT_8 = new AS400Text(8, ccsid.intValue(), as400);
+            AS400_TEXT_20 = new AS400Text(20, ccsid.intValue(), as400);
+        }
+        else {
+            AS400_TEXT_8 = new AS400Text(8, as400);
+            AS400_TEXT_20 = new AS400Text(20, as400);
+        }
 
         final JournalRetrievalCriteria criteria = new JournalRetrievalCriteria();
         final byte[] toRetrieve = new AS400Structure(criteria.getStructure()).toBytes(criteria.getObject());
@@ -305,10 +318,11 @@ public class JournalInfoRetrieval {
      * @return
      * @throws Exception
      */
-    public List<DetailedJournalReceiver> getReceivers(AS400 as400, JournalInfo journalLib) throws Exception {
+    public List<DetailedJournalReceiver> getReceivers(AS400 as400, JournalInfo journalLib, Integer ccsid) throws Exception {
         final int defaultSize = 32768; // 4k takes 31ms 32k takes 85ms must be a
                                        // multiple of 4k and 0 not allowed
-        byte[] data = getReceiversForJournal(as400, journalLib, defaultSize);
+
+        byte[] data = getReceiversForJournal(as400, journalLib, defaultSize, ccsid);
         final int actualSizeRequired = decodeInt(data, 4) * 4096; // bytes
                                                                   // available -
                                                                   // value
@@ -318,12 +332,12 @@ public class JournalInfoRetrieval {
                                                                   // 4k
         // pages
         if (actualSizeRequired > defaultSize) {
-            data = getReceiversForJournal(as400, journalLib, actualSizeRequired + 4096); // allow
-                                                                                         // for
-                                                                                         // any
-                                                                                         // growth
-                                                                                         // since
-                                                                                         // call
+            data = getReceiversForJournal(as400, journalLib, actualSizeRequired + 4096, ccsid); // allow
+            // for
+            // any
+            // growth
+            // since
+            // call
         }
 
         final Integer keyOffset = decodeInt(data, 8) + 4;
@@ -343,7 +357,7 @@ public class JournalInfoRetrieval {
                             + i * kheader.getLengthOfKeyInfo();
 
                     final JournalReceiverInfo r = dec.decode(data, kioffset);
-                    final DetailedJournalReceiver details = getReceiverDetails(as400, r);
+                    final DetailedJournalReceiver details = getReceiverDetails(as400, r, ccsid);
 
                     l.add(details);
                 }
@@ -354,8 +368,8 @@ public class JournalInfoRetrieval {
         return DetailedJournalReceiver.lastJoined(l);
     }
 
-    DetailedJournalReceiver getOffset(AS400 as400, JournalReceiver receiver) throws Exception {
-        return getReceiverDetails(as400, new JournalReceiverInfo(receiver, null, null, Optional.empty()));
+    DetailedJournalReceiver getOffset(AS400 as400, JournalReceiver receiver, Integer ccsid) throws Exception {
+        return getReceiverDetails(as400, new JournalReceiverInfo(receiver, null, null, Optional.empty()), ccsid);
     }
 
     /**
@@ -365,7 +379,7 @@ public class JournalInfoRetrieval {
      * @return
      * @throws Exception
      */
-    private DetailedJournalReceiver getReceiverDetails(AS400 as400, JournalReceiverInfo receiverInfo) throws Exception {
+    private DetailedJournalReceiver getReceiverDetails(AS400 as400, JournalReceiverInfo receiverInfo, Integer ccsid) throws Exception {
         final int rcvLen = 32768;
         final String receiverNameLib = padRight(receiverInfo.receiver().name(), 10)
                 + padRight(receiverInfo.receiver().library(), 10);
@@ -375,6 +389,18 @@ public class JournalInfoRetrieval {
                 return r;
             }
         }
+        final AS400Text AS400_TEXT_8;
+        final AS400Text AS400_TEXT_20;
+
+        if (ccsid > -1) {
+            AS400_TEXT_8 = new AS400Text(8, ccsid.intValue(), as400);
+            AS400_TEXT_20 = new AS400Text(20, ccsid.intValue(), as400);
+        }
+        else {
+            AS400_TEXT_8 = new AS400Text(8, as400);
+            AS400_TEXT_20 = new AS400Text(20, as400);
+        }
+
         final String format = "RRCV0100";
         final ProgramParameter[] parameters = new ProgramParameter[]{
                 new ProgramParameter(ProgramParameter.PASS_BY_REFERENCE, rcvLen),
@@ -392,8 +418,8 @@ public class JournalInfoRetrieval {
                     nextReceiverLib = (nextReceiverLib == null) ? receiverInfo.receiver().library() : nextReceiverLib;
                     final Long numberOfEntries = Long.valueOf(decodeString(data, 372, 20));
                     final Long maxEntryLength = Long.valueOf(decodeString(data, 392, 20));
-                    final BigInteger firstSequence = decodeBigIntFromString(data, 412);
-                    final BigInteger lastSequence = decodeBigIntFromString(data, 432);
+                    final BigInteger firstSequence = decodeBigIntFromString(data, 412, as400, ccsid);
+                    final BigInteger lastSequence = decodeBigIntFromString(data, 432, as400, ccsid);
                     final JournalStatus status = JournalStatus.valueOfString(decodeString(data, 88, 1));
 
                     if (!journalName.equals(receiverInfo.receiver().name())) {
@@ -498,8 +524,17 @@ public class JournalInfoRetrieval {
         T process(byte[] data) throws Exception;
     }
 
-    public static BigInteger decodeBigIntFromString(byte[] data, int offset) {
+    public static BigInteger decodeBigIntFromString(byte[] data, int offset, AS400 as400, Integer ccsid) {
         final byte[] b = Arrays.copyOfRange(data, offset, offset + 20);
+        final AS400Text AS400_TEXT_20;
+
+        if (ccsid > -1) {
+            AS400_TEXT_20 = new AS400Text(20, ccsid.intValue(), as400);
+        }
+        else {
+            AS400_TEXT_20 = new AS400Text(20, as400);
+        }
+
         final String s = (String) AS400_TEXT_20.toObject(b);
         return new BigInteger(s);
     }

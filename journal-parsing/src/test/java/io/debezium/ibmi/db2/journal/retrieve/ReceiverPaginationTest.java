@@ -38,6 +38,7 @@ class ReceiverPaginationTest {
     JournalInfo journalInfo = new JournalInfo("journal", "journallib");
     @Mock
     AS400 as400;
+    Integer ccsid;
 
     DetailedJournalReceiver dr3 = new DetailedJournalReceiver(new JournalReceiverInfo(new JournalReceiver("j3", "jlib"),
             new Date(3), JournalStatus.Attached, Optional.of(1)), BigInteger.valueOf(9), BigInteger.valueOf(17),
@@ -60,13 +61,13 @@ class ReceiverPaginationTest {
 
         final List<DetailedJournalReceiver> list = Arrays.asList(dr1);
 
-        when(journalInfoRetrieval.getReceivers(any(), any())).thenReturn(list);
+        when(journalInfoRetrieval.getReceivers(any(), any(), any())).thenReturn(list);
 
-        when(journalInfoRetrieval.getCurrentDetailedJournalReceiver(any(), any())).thenReturn(dr1);
+        when(journalInfoRetrieval.getCurrentDetailedJournalReceiver(any(), any(), any())).thenReturn(dr1);
 
         final JournalProcessedPosition startPosition = new JournalProcessedPosition(BigInteger.ONE,
                 new JournalReceiver("j1", "jlib"), Instant.ofEpochSecond(0), true);
-        final PositionRange result = jreceivers.findRange(as400, startPosition);
+        final PositionRange result = jreceivers.findRange(as400, startPosition, ccsid);
         final PositionRange rangeAnswer = new PositionRange(false, startPosition,
                 new JournalPosition(dr1.end(), dr1.info().receiver()));
         assertEquals(rangeAnswer, result);
