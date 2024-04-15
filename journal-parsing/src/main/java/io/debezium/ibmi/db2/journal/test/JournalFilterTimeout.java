@@ -44,22 +44,23 @@ public class JournalFilterTimeout {
         final String schema = connector.getSchema();
         final List<FileFilter> includes = new ArrayList<>();
         final String includesEnv = System.getenv("ISERIES_INCLUDES");
+        final Integer ccsid = -1;
         if (includesEnv != null) {
             for (final String i : Arrays.asList(includesEnv.split(","))) {
                 includes.add(new FileFilter(schema, i));
             }
         }
-        final JournalInfo journal = JournalInfoRetrieval.getJournal(as400Connect.connection(), schema, includes);
+        final JournalInfo journal = JournalInfoRetrieval.getJournal(as400Connect.connection(), schema, includes, ccsid);
 
         final String offset = System.getenv("ISERIES_OFFSET");
         final String receiver = System.getenv("ISERIES_RECEIVER");
 
         final JournalInfoRetrieval journalInfoRetrieval = new JournalInfoRetrieval();
         final List<DetailedJournalReceiver> receivers = journalInfoRetrieval.getReceivers(as400Connect.connection(),
-                journal);
+                journal, ccsid);
         final DetailedJournalReceiver first = receivers.stream().min((x, y) -> x.start().compareTo(y.start())).get();
         final JournalPosition endPosition = journalInfoRetrieval.getCurrentPosition(as400Connect.connection(),
-                journal);
+                journal, ccsid);
         log.info("start {} end {}", first, endPosition);
 
         try (PrintWriter pw = new PrintWriter(new File("exceptions.txt"))) {

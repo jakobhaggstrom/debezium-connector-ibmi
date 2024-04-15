@@ -26,12 +26,13 @@ public class JournalInfoMain {
         TestConnector connector = new TestConnector();
         Connect<AS400, IOException> as400Connect = connector.getAs400();
         String schema = connector.getSchema();
+        Integer ccsid = -1;
 
-        JournalInfo ji = JournalInfoRetrieval.getJournal(as400Connect.connection(), schema, "PERSON");
+        JournalInfo ji = JournalInfoRetrieval.getJournal(as400Connect.connection(), schema, "PERSON", ccsid);
 
         JournalInfoRetrieval journalInfoRetrieval = new JournalInfoRetrieval();
 
-        List<DetailedJournalReceiver> jri = journalInfoRetrieval.getReceivers(as400Connect.connection(), ji);
+        List<DetailedJournalReceiver> jri = journalInfoRetrieval.getReceivers(as400Connect.connection(), ji, ccsid);
         log.info("all {}", jri);
 
         log.info(DetailedJournalReceiver.lastJoined(jri).toString());
@@ -39,10 +40,10 @@ public class JournalInfoMain {
         // for (DetailedJournalReceiver j : jri) {
         // log.info("receiver {}", j);
         // }
-        JournalReceiver jr = JournalInfoRetrieval.getReceiver(as400Connect.connection(), ji);
+        JournalReceiver jr = JournalInfoRetrieval.getReceiver(as400Connect.connection(), ji, ccsid);
         log.info("Journal info {}", jr);
 
-        log.info("current position: {}", journalInfoRetrieval.getCurrentPosition(as400Connect.connection(), ji));
+        log.info("current position: {}", journalInfoRetrieval.getCurrentPosition(as400Connect.connection(), ji, ccsid));
         log.info("size {}", jri.size());
     }
 }
